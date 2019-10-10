@@ -167,9 +167,14 @@ def assertion_consumer_service(request, idp_name):
         request.POST.get('SAMLResponse'),
         entity.BINDING_HTTP_POST)
     authn_response.get_identity()
-    email = authn_response.ava['Email'][0]
-    first_name = authn_response.ava['FirstName'][0]
-    last_name = authn_response.ava['LastName'][0]
+    required_keys = settings.SAML_EMAIL_KEYS + \
+                    settings.SAML_FIRST_NAME_KEYS + \
+                    settings.SAML_LAST_NAME_KEYS
+    if len(set(required_keys) & set(authn_response.ava.keys())) == 0:
+        raise ValidationError('Missing required SAML assertions, received {}'.format(authn_response.ava.keys()))
+    email = [authn_response.ava[key][0] for key in settings.SAML_EMAIL_KEYS if key in authn_response.ava][0]
+    first_name = [authn_response.ava[key][0] for key in settings.SAML_FIRST_NAME_KEYS if key in authn_response.ava][0]
+    last_name = [authn_response.ava[key][0] for key in settings.SAML_LAST_NAME_KEYS if key in authn_response.ava][0]
     badgr_app = BadgrApp.objects.get(pk=request.session.get('badgr_app_pk'))
     return auto_provision(request, email, first_name, last_name, badgr_app, config)
 
